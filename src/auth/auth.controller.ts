@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Res } from '@nestjs/common';
 
 import { ApiOkResponse } from '@nestjs/swagger';
 import { SignInDto } from './dto/signin.dto';
@@ -38,4 +38,8 @@ export class AuthController {
   async logout(@Res({ passthrough: true }) response: Response) {
     return this.authService.logout(response);
   }
+
+  @HttpCode(HttpStatus.OK)
+  @Get('check-auth')
+  async checkAuth() {}
 }

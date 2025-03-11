@@ -27,28 +27,20 @@ export class AuthGuard implements CanActivate {
 
     const { access_token, refresh_token } = request.cookies;
 
-    if (!access_token) {
-      return false;
-    }
-
     try {
       const payload = await this.authService.verifyAccessToken(access_token);
+
       request.user = payload;
       return true;
-    } catch {
-      if (!refresh_token) {
-        return false;
-      }
-
+    } catch (error: any) {
       try {
         const refreshPayload = await this.authService.verifyRefreshToken(refresh_token);
         const accessToken = await this.authService.generateAccessToken(refreshPayload);
 
-        this.cookieService.setRefreshToken(response, accessToken);
-
+        this.cookieService.setAccessToken(response, accessToken);
         request.user = refreshPayload;
         return true;
-      } catch {
+      } catch (error: any) {
         return false;
       }
     }
