@@ -13,7 +13,7 @@ export class CookieService {
     response.cookie('access_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'none',
       maxAge: TOKEN_CONFIG.ACCESS_TOKEN.COOKIE_MAX_AGE,
     });
   }
@@ -22,7 +22,7 @@ export class CookieService {
     response.cookie('refresh_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      sameSite: 'none',
       maxAge: TOKEN_CONFIG.REFRESH_TOKEN.COOKIE_MAX_AGE,
     });
   }
