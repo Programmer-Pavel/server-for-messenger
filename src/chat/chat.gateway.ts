@@ -13,16 +13,16 @@ export class ChatGateway {
   @WebSocketServer()
   server!: Server;
 
-  @SubscribeMessage('joinRoom')
-  async handleJoinRoom(@MessageBody() roomId: string, @ConnectedSocket() client: Socket) {
-    console.log('roomId:', roomId);
-    client.join(roomId);
-    // Получаем историю сообщений при входе в комнату
-    const messages = await this.chatService.getRoomMessages(roomId);
+  // @SubscribeMessage('joinRoom')
+  // async handleJoinRoom(@MessageBody() roomId: string, @ConnectedSocket() client: Socket) {
+  //   console.log('roomId:', roomId);
+  //   client.join(roomId);
+  //   // Получаем историю сообщений при входе в комнату
+  //   const messages = await this.chatService.getRoomMessages(roomId);
 
-    // console.log('Messages:', messages);
-    return { event: 'joinRoom', data: { roomId, messages } };
-  }
+  //   // console.log('Messages:', messages);
+  //   return { event: 'joinRoom', data: { roomId, messages } };
+  // }
 
   @SubscribeMessage('leaveRoom')
   handleLeaveRoom(@MessageBody() roomId: string, @ConnectedSocket() client: Socket) {

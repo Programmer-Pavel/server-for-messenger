@@ -12,7 +12,7 @@ export class CookieService {
   setAccessToken(response: Response, token: string) {
     response.cookie('access_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       sameSite: 'none',
       maxAge: TOKEN_CONFIG.ACCESS_TOKEN.COOKIE_MAX_AGE,
     });
@@ -21,7 +21,7 @@ export class CookieService {
   setRefreshToken(response: Response, token: string) {
     response.cookie('refresh_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true,
       sameSite: 'none',
       maxAge: TOKEN_CONFIG.REFRESH_TOKEN.COOKIE_MAX_AGE,
     });

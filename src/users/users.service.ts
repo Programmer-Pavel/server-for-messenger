@@ -43,7 +43,7 @@ export class UsersService {
     }
   }
 
-  async findOne(email: string): Promise<FindedUser | null> {
+  async findByEmail(email: string): Promise<FindedUser | null> {
     try {
       const user = await this.prisma.user.findUnique({
         where: { email },
@@ -52,6 +52,26 @@ export class UsersService {
 
       if (!user) {
         throw new NotFoundException('Пользователь с таким email не найден');
+      }
+
+      return user;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new Error('Ошибка при поиске пользователя');
+    }
+  }
+
+  async findById(id: number): Promise<FindedUser | null> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id },
+        select: findedUserSelect,
+      });
+
+      if (!user) {
+        throw new NotFoundException('Пользователь с таким id не найден');
       }
 
       return user;
