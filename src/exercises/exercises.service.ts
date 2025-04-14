@@ -11,6 +11,7 @@ const exerciseSelect = {
   name: true,
   userId: true,
   createdAt: true,
+  approaches: true,
 } satisfies Prisma.ExerciseSelect;
 
 @Injectable()

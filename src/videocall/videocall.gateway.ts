@@ -13,6 +13,21 @@ export class VideoCallGateway {
   @WebSocketServer()
   server!: Server;
 
+  // Обработчик отключения клиента
+  handleDisconnect(client: Socket) {
+    const userId = client.data.userId;
+    if (userId) {
+      // Завершаем активный звонок, если был
+      const partnerUserId = this.videoCallService.endActiveCall(userId);
+
+      // Уведомляем партнера о завершении звонка
+      if (partnerUserId) {
+        console.log(`Пользователь ${userId} отключился, уведомляем партнера ${partnerUserId}`);
+        this.server.to(partnerUserId).emit('call-ended');
+      }
+    }
+  }
+
   // Присоединение к комнате с ID пользователя
   @SubscribeMessage('joinRoom')
   handleJoinRoom(@MessageBody() data: { userId: string }, @ConnectedSocket() client: Socket) {
@@ -31,6 +46,13 @@ export class VideoCallGateway {
     @MessageBody() data: { offer: RTCSessionDescriptionInit; to: string; from: string },
     @ConnectedSocket() client: Socket,
   ) {
+    // Проверяем, не занят ли пользователь
+    if (this.videoCallService.isUserInCall(data.to)) {
+      console.log(`Пользователь ${data.to} уже занят в другом звонке`);
+      this.server.to(data.from).emit('user-busy', { userId: data.to });
+      return;
+    }
+
     const user = await this.videoCallService.getUserById(data.from);
     const callerName = user?.name || 'Неизвестный пользователь';
 
@@ -50,6 +72,12 @@ export class VideoCallGateway {
     @ConnectedSocket() client: Socket,
   ) {
     console.log(`Звонок принят, отправка ответа к ${data.to}`);
+
+    // Регистрируем активный звонок
+    const fromUserId = client.data.userId;
+    if (fromUserId && data.to) {
+      this.videoCallService.registerActiveCall(fromUserId, data.to);
+    }
 
     this.server.to(data.to).emit('call-accepted', {
       answer: data.answer,
@@ -73,6 +101,12 @@ export class VideoCallGateway {
   @SubscribeMessage('end-call')
   handleEndCall(@MessageBody() data: { to: string }, @ConnectedSocket() client: Socket) {
     console.log(`Завершение звонка для ${data.to}`);
+
+    // Завершаем активный звонок
+    const userId = client.data.userId;
+    if (userId) {
+      this.videoCallService.endActiveCall(userId);
+    }
 
     this.server.to(data.to).emit('call-ended');
   }
