@@ -56,6 +56,23 @@ export class ChatGateway {
 
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
+
+    // Если у клиента был сохранен userId, выполняем дополнительные действия
+    if (client.data && client.data.userId) {
+      console.log(`Пользователь ${client.data.userId} вышел из сети`);
+    }
+  }
+
+  @SubscribeMessage('userOnline')
+  handleUserOnline(@MessageBody() userId: string, @ConnectedSocket() client: Socket) {
+    // Присоединяем пользователя к его персональной комнате
+    client.join(`user_${userId}`);
+
+    // Сохраняем ID пользователя в данных сокета
+    client.data.userId = userId;
+
+    console.log(`Пользователь ${userId} онлайн`);
+    return { event: 'userOnline', data: { success: true } };
   }
 
   // PRIVATE CHAT
@@ -87,8 +104,16 @@ export class ChatGateway {
 
     const savedMessage = await this.chatService.sendMessage(roomId, messageData);
 
-    // Отправляем сообщение только участникам приватного чата
-    this.server.to(roomId).emit('onPrivateMessage', savedMessage);
+    // Отправляем сообщение участникам приватного чата
+    this.server.to(roomId).emit('onPrivateMessage', { message: savedMessage, fromUserId: data.fromUserId });
+
+    // Отправляем уведомление получателю в его персональную комнату
+    this.server.to(`user_${data.toUserId}`).emit('newMessageNotification', {
+      fromUserId: data.fromUserId,
+      messagePreview: data.message.substring(0, 30) + (data.message.length > 30 ? '...' : ''),
+      roomId: roomId,
+      timestamp: new Date(),
+    });
 
     return { event: 'privateMessage', data: savedMessage };
   }
