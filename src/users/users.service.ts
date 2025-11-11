@@ -1,119 +1,54 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { EntityRepository } from '@mikro-orm/core';
 import * as bcrypt from 'bcrypt';
+import { User } from './entities/user.entity';
+import { CreateUserDto } from './dto/create-user.dto';
+import { CreatedUser, createdUserFields, FindedUser, findedUserFields } from './user.types';
 
 const SALT_ROUNDS = 10;
 
-const findedUserSelect = {
-  id: true,
-  email: true,
-  password: true,
-  name: true,
-} satisfies Prisma.UserSelect;
-
-type FindedUser = Prisma.UserGetPayload<{
-  select: typeof findedUserSelect;
-}>;
-
-const createdUserSelect = {
-  id: true,
-  email: true,
-  name: true,
-} satisfies Prisma.UserSelect;
-
-type CreatedUser = Prisma.UserGetPayload<{
-  select: typeof createdUserSelect;
-}>;
-
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    @InjectRepository(User)
+    private readonly userRepo: EntityRepository<User>,
+  ) {}
 
   async findAll(): Promise<CreatedUser[]> {
-    try {
-      const users = await this.prisma.user.findMany({
-        select: createdUserSelect,
-      });
-      return users;
-    } catch (error) {
-      throw new Error('Ошибка при получении списка пользователей');
-    }
+    return this.userRepo.findAll({ fields: createdUserFields });
   }
 
-  async findByEmail(email: string): Promise<FindedUser | null> {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { email },
-        select: findedUserSelect,
-      });
-
-      if (!user) {
-        throw new NotFoundException('Пользователь с таким email не найден');
-      }
-
-      return user;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new Error('Ошибка при поиске пользователя');
-    }
+  async findByEmail(email: string): Promise<FindedUser> {
+    const user = await this.userRepo.findOne({ email }, { fields: findedUserFields });
+    if (!user) throw new NotFoundException('Пользователь с таким email не найден');
+    return user;
   }
 
-  async findById(id: number): Promise<FindedUser | null> {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: { id },
-        select: findedUserSelect,
-      });
-
-      if (!user) {
-        throw new NotFoundException('Пользователь с таким id не найден');
-      }
-
-      return user;
-    } catch (error) {
-      if (error instanceof NotFoundException) {
-        throw error;
-      }
-      throw new Error('Ошибка при поиске пользователя');
-    }
+  async findById(id: number): Promise<FindedUser> {
+    const user = await this.userRepo.findOne({ id }, { fields: findedUserFields });
+    if (!user) throw new NotFoundException('Пользователь с таким id не найден');
+    return user;
   }
 
-  async createUser(data: Prisma.UserCreateInput): Promise<CreatedUser | null> {
-    try {
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email: data.email },
-      });
-
-      if (existingUser) {
-        throw new ConflictException('Пользователь с таким email уже существует');
-      }
-
-      const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
-      const userData = { ...data, password: hashedPassword };
-
-      return this.prisma.user.create({
-        data: userData,
-        select: createdUserSelect,
-      });
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw error;
-      }
-      throw new Error('Ошибка при создании пользователя');
+  async createUser(data: CreateUserDto): Promise<CreatedUser> {
+    const existing = await this.userRepo.findOne({ email: data.email });
+    if (existing) {
+      throw new ConflictException('Пользователь с таким email уже существует');
     }
-  }
 
-  // async updateUserStatus(userId: string, isOnline: boolean) {
-  //   return this.prisma.user.update({
-  //     where: { id: userId },
-  //     data: {
-  //       isOnline,
-  //       lastSeen: new Date(),
-  //     },
-  //     select: findedUserSelect,
-  //   });
-  // }
+    const hashedPassword = await bcrypt.hash(data.password, SALT_ROUNDS);
+
+    const user = this.userRepo.create({
+      email: data.email,
+      password: hashedPassword,
+      name: data.name,
+      isOnline: false,
+      lastSeen: new Date(),
+    });
+
+    await this.userRepo.getEntityManager().persistAndFlush(user);
+
+    return { id: user.id, email: user.email, name: user.name };
+  }
 }

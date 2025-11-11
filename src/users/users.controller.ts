@@ -9,9 +9,4 @@ export class UsersController {
   async findAll() {
     return this.usersService.findAll();
   }
-
-  //   @Post()
-  //   async create(@Body() userData: Prisma.UserCreateInput) {
-  //     return this.usersService.createUser(userData);
-  //   }
 }

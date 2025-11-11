@@ -1,13 +1,12 @@
-import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { UsersModule } from './users/users.module';
-import { PrismaModule } from './prisma/prisma.module';
-import { ChatModule } from './chat/chat.module';
-import { VideoCallModule } from './videocall/videocall.module';
-import { ExercisesModule } from './exercises/exercises.module';
-import { ApproachesModule } from './approaches/approaches.module';
+import { MikroOrmMiddleware, MikroOrmModule } from '@mikro-orm/nestjs';
 
 @Module({
-  imports: [AuthModule, UsersModule, PrismaModule, ChatModule, VideoCallModule, ExercisesModule, ApproachesModule],
+  imports: [MikroOrmModule.forRoot(), UsersModule],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(MikroOrmMiddleware).forRoutes('*');
+  }
+}
