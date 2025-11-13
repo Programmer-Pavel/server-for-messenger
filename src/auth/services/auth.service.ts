@@ -8,6 +8,8 @@ import { CookieService } from './cookie.service';
 import { Response } from 'express';
 import { TOKEN_CONFIG } from 'src/config/tokens.config';
 import { TokenPayload } from '../interfaces/tokenPayload.interface';
+import { SignInResponseDto } from '../dto/sign-in-response.dto';
+import { SignUpResponseDto } from '../dto/sign-up-response.dto';
 
 @Injectable()
 export class AuthService {
@@ -16,7 +18,7 @@ export class AuthService {
     private jwtService: JwtService,
     private cookieService: CookieService,
   ) {}
-  async signIn(bodyData: SignInDto, response: Response) {
+  async signIn(bodyData: SignInDto, response: Response): Promise<SignInResponseDto> {
     const { email, password } = bodyData;
     const user = await this.usersService.findByEmail(email);
 
@@ -29,28 +31,18 @@ export class AuthService {
 
       const payload = { sub: user.id, email: user.email };
 
-      try {
-        const tokens = await this.generateTokens(payload);
-        this.cookieService.setTokens(response, tokens.accessToken, tokens.refreshToken);
-        return {
-          message: 'Успешная авторизация',
-          user: {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-          },
-        };
-      } catch (error) {
-        throw new UnauthorizedException('Ошибка при генерации токенов авторизации');
-      }
+      const tokens = await this.generateTokens(payload);
+      this.cookieService.setTokens(response, tokens.accessToken, tokens.refreshToken);
+      return { message: 'Успешная авторизация', user: { id: user.id, email: user.email, name: user.name } };
     }
+    throw new UnauthorizedException('Пользователь не найден');
   }
 
-  async signUp(bodyData: SignUpDto) {
+  async signUp(bodyData: SignUpDto): Promise<SignUpResponseDto> {
     return this.usersService.createUser(bodyData);
   }
 
-  async logout(response: Response) {
+  async logout(response: Response): Promise<{ message: string }> {
     try {
       this.cookieService.clearTokens(response);
       return { message: 'Успешный выход из системы' };
@@ -59,7 +51,7 @@ export class AuthService {
     }
   }
 
-  async generateTokens(payload: TokenPayload) {
+  async generateTokens(payload: TokenPayload): Promise<{ accessToken: string; refreshToken: string }> {
     try {
       const [accessToken, refreshToken] = await Promise.all([
         this.jwtService.signAsync(payload, {
@@ -78,7 +70,7 @@ export class AuthService {
     }
   }
 
-  async generateAccessToken(payload: TokenPayload) {
+  async generateAccessToken(payload: TokenPayload): Promise<string> {
     const payloadData = { sub: payload.sub, email: payload.email };
 
     try {
@@ -93,7 +85,7 @@ export class AuthService {
     }
   }
 
-  async verifyAccessToken(token: string) {
+  async verifyAccessToken(token: string): Promise<TokenPayload> {
     if (!token) {
       throw new UnauthorizedException('Access токен не предоставлен');
     }
@@ -114,7 +106,7 @@ export class AuthService {
     }
   }
 
-  async verifyRefreshToken(token: string) {
+  async verifyRefreshToken(token: string): Promise<TokenPayload> {
     if (!token) {
       throw new UnauthorizedException('Refresh токен не предоставлен');
     }
